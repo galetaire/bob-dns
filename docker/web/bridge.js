@@ -373,6 +373,8 @@
     },
     app: {
       isPackaged: boot.isPackaged,
+      // Bob's packaged-test mode; never on for real users
+      isAcceptance: false,
       getPath(name) {
         return boot.paths[name] || null;
       },

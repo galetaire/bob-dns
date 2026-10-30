@@ -150,7 +150,7 @@ const CSP = [
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   'img-src * data: blob:',
-  "connect-src 'self' ws: wss: https://liquidity.spot http://liquidity.spot https://*.sentry.io https://*.mixpanel.com",
+  "connect-src 'self' ws: wss: https://shakex.fun https://liquidity.spot http://liquidity.spot https://*.sentry.io https://*.mixpanel.com",
   "frame-ancestors 'self'",
 ].join('; ');
 
@@ -331,6 +331,9 @@ function serializeNodeStarts() {
 // connected, chain.add() holds the chain lock and waits on the wallet to
 // connect the block: both wait forever and sync sits at 0%. Let the wallet
 // finish catching up before the node connects to peers.
+// Bob 2.3.19+ fixes this itself (wallet/localRescan.js defers the wallet sync
+// until after connect and takes the locks in a safe order), so step aside
+// when that is installed.
 function waitForWalletBeforeConnect() {
   const hsdLib = path.join(BOB_DIR, 'node_modules', 'hsd', 'lib', 'node');
   for (const file of ['fullnode.js', 'spvnode.js']) {
@@ -339,7 +342,7 @@ function waitForWalletBeforeConnect() {
     NodeClass.prototype.connect = async function connectAfterWalletSync(...args) {
       const plugin = this.get('walletdb');
       const wdb = plugin && plugin.wdb;
-      if (wdb && wdb.txLock) {
+      if (wdb && wdb.txLock && typeof wdb.resumeLocalSync !== 'function') {
         const started = Date.now();
         const unlock = await wdb.txLock.lock();
         unlock();

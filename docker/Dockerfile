@@ -2,7 +2,7 @@
 # Bob's wallet, hsd node and services run under plain Node (no Electron),
 # and its React UI is served to the browser. See web/server.js.
 
-ARG BOB_VERSION=2.3.12
+ARG BOB_VERSION=2.3.19
 
 # ---- build Bob from the release tag ----
 FROM node:22-bookworm AS build
@@ -33,6 +33,13 @@ RUN echo "// Sentry is disabled in the web build" > app/renderer/sentry.js \
   && sed -i "s#^    alias: {#    alias: {\n      '@sentry/electron/renderer\$': path.join(__dirname, '..', 'app', 'renderer', 'sentry-stub.js'),#" \
     configs/webpack.config.renderer.prod.babel.js \
   && grep -q "sentry-stub.js" configs/webpack.config.renderer.prod.babel.js
+
+# Bob's build records its source commit and refuses a modified worktree.
+# Commit the web-build changes locally so the recorded commit is honest.
+RUN git add -A app configs \
+  && git -c user.name="bob-umbrel build" -c user.email="build@bob-umbrel.invalid" \
+    commit -q -m "Umbrel web build: disable the renderer's Sentry SDK" \
+  && test -z "$(git status --porcelain --untracked-files=normal)"
 
 # Compiles the renderer bundle and the main-process code into dist/
 RUN npm run build && npm prune --omit=dev
