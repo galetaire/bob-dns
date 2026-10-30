@@ -5,6 +5,7 @@
 // over a WebSocket that carries the same IPC messages Electron would.
 
 const crypto = require('crypto');
+const dns = require('dns');
 const fs = require('fs');
 const http = require('http');
 const Module = require('module');
@@ -235,7 +236,85 @@ function serveDownload(res, url) {
   });
 }
 
-const server = http.createServer((req, res) => {
+// ---- who may connect -------------------------------------------------------
+
+// Every Umbrel app shares one Docker network, so any other app's container
+// could reach this server directly and skip the Umbrel login. Only accept
+// connections that come through Umbrel's own routing:
+// - umbrelOS's app gateway runs on the host, so its connections arrive from
+//   this network's gateway address (Tor remote access goes through it too);
+// - older umbrelOS versions run an app_proxy container for this app instead
+//   (BOB_WEB_PROXY_HOST, for example bob-wallet_app_proxy_1);
+// - loopback, for anything inside this container.
+// BOB_WEB_TRUSTED_IPS adds addresses; BOB_WEB_ALLOW_ANY_SOURCE=true turns the
+// check off, for setups that route traffic some other way.
+const ALLOW_ANY_SOURCE = process.env.BOB_WEB_ALLOW_ANY_SOURCE === 'true';
+const PROXY_HOST = process.env.BOB_WEB_PROXY_HOST || '';
+const staticTrusted = new Set(['127.0.0.1', '::1']);
+for (const ip of (process.env.BOB_WEB_TRUSTED_IPS || '').split(',')) {
+  if (ip.trim()) staticTrusted.add(ip.trim());
+}
+
+// The default route's gateway, from the kernel's routing table.
+function defaultGateway() {
+  try {
+    for (const line of fs.readFileSync('/proc/net/route', 'utf8').trim().split('\n').slice(1)) {
+      const [, destination, gateway] = line.trim().split(/\s+/);
+      if (destination === '00000000' && gateway !== '00000000') {
+        // Little-endian hex, e.g. 01001510 -> 16.21.0.1 reversed -> 10.21.0.1
+        return gateway.match(/../g).reverse().map(byte => parseInt(byte, 16)).join('.');
+      }
+    }
+  } catch (e) {
+    // not Linux, or no routing table: rely on the other sources
+  }
+  return null;
+}
+
+const gatewayIp = defaultGateway();
+if (gatewayIp) staticTrusted.add(gatewayIp);
+
+let proxyIps = new Set();
+let proxyResolvedAt = 0;
+async function refreshProxyIps() {
+  if (!PROXY_HOST) return;
+  proxyResolvedAt = Date.now();
+  try {
+    const records = await dns.promises.lookup(PROXY_HOST, {all: true});
+    proxyIps = new Set(records.map(record => record.address));
+  } catch (e) {
+    // Not resolvable: this umbrelOS has no app_proxy container
+    proxyIps = new Set();
+  }
+}
+
+const normalizeIp = ip => String(ip || '').replace(/^::ffff:/, '');
+const rejectedLogged = new Set();
+
+async function isTrustedSource(remoteAddress) {
+  if (ALLOW_ANY_SOURCE) return true;
+  const ip = normalizeIp(remoteAddress);
+  if (staticTrusted.has(ip) || proxyIps.has(ip)) return true;
+  // The proxy container may have been recreated with a new address.
+  if (PROXY_HOST && Date.now() - proxyResolvedAt > 5000) {
+    await refreshProxyIps();
+    if (proxyIps.has(ip)) return true;
+  }
+  if (!rejectedLogged.has(ip)) {
+    rejectedLogged.add(ip);
+    console.warn(`[Bob web] Refused a connection from ${ip}: it did not come through Umbrel. ` +
+      'Set BOB_WEB_TRUSTED_IPS or BOB_WEB_ALLOW_ANY_SOURCE=true if this is expected.');
+  }
+  return false;
+}
+
+console.log(ALLOW_ANY_SOURCE
+  ? '[Bob web] Source check is off (BOB_WEB_ALLOW_ANY_SOURCE=true).'
+  : `[Bob web] Accepting connections from: ${[...staticTrusted].join(', ')}${PROXY_HOST ? `, ${PROXY_HOST}` : ''}`);
+
+const server = http.createServer(async (req, res) => {
+  if (!(await isTrustedSource(req.socket.remoteAddress))) return send(res, 403, 'Forbidden');
+
   const url = new URL(req.url, 'http://localhost');
   const pathname = decodeURIComponent(url.pathname);
 
@@ -262,9 +341,10 @@ const server = http.createServer((req, res) => {
 
 const wss = new WebSocketServer({noServer: true, maxPayload: 64 * 1024 * 1024});
 
-server.on('upgrade', (req, socket, head) => {
+server.on('upgrade', async (req, socket, head) => {
   const url = new URL(req.url, 'http://localhost');
-  if (url.pathname !== '/__bob/ws' || url.searchParams.get('token') !== sessionToken) {
+  if (!(await isTrustedSource(req.socket.remoteAddress))
+      || url.pathname !== '/__bob/ws' || url.searchParams.get('token') !== sessionToken) {
     socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
     socket.destroy();
     return;

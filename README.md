@@ -31,7 +31,7 @@ This image runs both without Electron:
 | `docker/web/electron-shim.js` | A stand-in for the `electron` module (`app`, `ipcMain`, `BrowserWindow`, …). The "main window" is every connected browser. |
 | `docker/web/bridge.js` | The browser's `window.bobElectron`. Saving a file downloads it, opening a file uses the browser's file picker, and links open in a new tab. |
 
-Bob is built from its release tag for both **amd64** and **arm64** (Raspberry Pi), on GitHub's native runners. Umbrel's `app_proxy` puts the app behind your Umbrel login on port **8337**. The WebSocket also requires a per-start session token embedded in the page, so other websites can't drive the wallet through your browser.
+Bob is built from its release tag for both **amd64** and **arm64** (Raspberry Pi), on GitHub's native runners. Umbrel's `app_proxy` puts the app behind your Umbrel login on port **8337**. The WebSocket also requires a per-start session token embedded in the page, so other websites can't drive the wallet through your browser. The server also only accepts connections routed by Umbrel (umbrelOS's app gateway, or this app's `app_proxy` container on older versions), so other apps on the same Umbrel can't reach the wallet directly and skip the Umbrel login.
 
 Not supported in the web version: Ledger hardware wallets (no USB access) and `bob://` deep links. Folder pickers (wallet DB backup, moving the node's data folder) ask for a folder path on the Umbrel instead.
 

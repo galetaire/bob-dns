@@ -8,12 +8,15 @@ services:
       APP_PORT: 3000
 
   server:
-    image: ghcr.io/galetaire/bob-learnhns:2.3.19-web.1
+    image: ghcr.io/galetaire/bob-learnhns:2.3.19-web.2
     restart: on-failure
     # Give hsd time to flush its databases when the app stops
     stop_grace_period: 1m
     environment:
       - TZ=Etc/UTC
+      # Only accept connections routed by Umbrel (see docker/web/server.js).
+      # Older umbrelOS versions route through this app_proxy container.
+      - BOB_WEB_PROXY_HOST=bob-wallet_app_proxy_1
     volumes:
       # Same folder as the earlier KasmVNC version, so wallets and chain data carry over.
       # Bob keeps everything in /data/.config/Bob LearnHNS
