@@ -3,7 +3,7 @@ id: bob-wallet
 name: Bob DNS
 tagline: Handshake DNS wallet and full node
 icon: https://raw.githubusercontent.com/galetaire/bob-umbrel/main/bob-wallet/icon.png
-category: networking
+category: crypto
 version: "2.3.19-web.2"
 port: 8337
 description: >-
@@ -22,7 +22,7 @@ description: >-
   Discord main channel: https://discord.gg/Q2HfjDGfz
 
 
-  The initial sync of the Handshake blockchain can take several days. As of October 2026, a full node 
+  The initial sync of the Handshake blockchain can take several days. As of October 2026, a full node
   requires about 150 GB of disk space. Until your full node has finished syncing, the best approach is
   to run in SPV mode whenever you need the wallet, and switch back to full-node mode when you want the
   sync to make progress. Once your node is fully synced, there’s no need to switch back to SPV mode.
