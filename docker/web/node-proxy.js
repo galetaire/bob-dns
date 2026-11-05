@@ -34,18 +34,19 @@ const ALLOWED_RPC = new Set([
   // chain / node info
   'getinfo', 'getblockchaininfo', 'getnetworkinfo', 'getmininginfo',
   'getblockcount', 'getbestblockhash', 'getdifficulty', 'getconnectioncount',
-  'getnetworkhashps', 'uptime',
+  'getnetworkhashps',
   // blocks
   'getblock', 'getblockbyheight', 'getblockheader', 'getblockhash',
-  'getchaintips', 'getentropy',
+  'getchaintips',
   // transactions (read)
   'getrawtransaction', 'gettxout', 'gettxoutproof', 'verifytxoutproof',
   'decoderawtransaction', 'decodescript',
   // mempool (read)
   'getmempoolinfo', 'getrawmempool', 'getmempoolentry', 'estimatefee',
   'estimatesmartfee', 'estimatepriority',
-  // names / auctions (the Handshake-specific data)
-  'getnameinfo', 'getnameresource', 'getnamebyhash', 'getnames',
+  // names / auctions (the Handshake-specific data). getnames is left out on
+  // purpose: it walks the whole name tree and would load the wallet's node.
+  'getnameinfo', 'getnameresource', 'getnamebyhash',
   'getnameproof', 'getdnssecproof',
   // addresses
   'validateaddress',
@@ -65,6 +66,10 @@ const ALLOWED_REST = [
   /^mempool$/,                       // /mempool
   /^fee$/,                           // /fee
 ];
+
+// hsd has no limit on address lookups, and a very active address can return a
+// huge response. Stop reading rather than buffer it all in the wallet's process.
+const MAX_RESPONSE_BYTES = 32 * 1024 * 1024;
 
 const PORT = Number(process.env.NODE_PROXY_PORT || 3100);
 const ENABLED = process.env.NODE_PROXY_ENABLED !== 'false';
@@ -128,8 +133,18 @@ function hsdRequest({rpcPort, apiKey, method, path, body}) {
       },
     }, res => {
       const chunks = [];
-      res.on('data', c => chunks.push(c));
+      let size = 0;
+      res.on('data', c => {
+        size += c.length;
+        if (size > MAX_RESPONSE_BYTES) {
+          reject(new Error('Response too large'));
+          res.destroy();
+          return;
+        }
+        chunks.push(c);
+      });
       res.on('end', () => resolve({status: res.statusCode, body: Buffer.concat(chunks)}));
+      res.on('error', reject);
     });
     req.on('error', reject);
     req.setTimeout(30000, () => req.destroy(new Error('hsd request timed out')));
