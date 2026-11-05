@@ -4,7 +4,7 @@ name: Bob DNS
 tagline: Handshake DNS wallet and full node
 icon: https://raw.githubusercontent.com/galetaire/bob-umbrel/main/bob-wallet/icon.png
 category: crypto
-version: "2.3.19-web.2"
+version: "2.3.19-web.3"
 port: 8337
 description: >-
   Bob DNS is a Handshake (HNS) wallet with a built-in full node. Use it to
@@ -41,9 +41,11 @@ gallery:
   - https://raw.githubusercontent.com/galetaire/bob-umbrel/main/bob-wallet/gallery/2.png
   - https://raw.githubusercontent.com/galetaire/bob-umbrel/main/bob-wallet/gallery/3.png
 releaseNotes: >-
-  Security: the wallet now only accepts connections that come through
-  Umbrel, so other apps on your Umbrel can no longer reach it directly
-  and skip the Umbrel login.
+  New: Bob can now share a read-only view of its Handshake node with a
+  companion explorer app (Finestra). Only a read-only slice of the node
+  API is exposed, only to that app; your wallet stays private and behind
+  the Umbrel login. It is on by default and does nothing until you install
+  the explorer.
 dependencies: []
 path: ""
 defaultUsername: ""

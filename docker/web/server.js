@@ -11,6 +11,7 @@ const http = require('http');
 const Module = require('module');
 const path = require('path');
 const {WebSocketServer} = require('ws');
+const {startNodeProxy} = require('./node-proxy');
 
 const BOB_DIR = process.env.BOB_DIR || path.resolve(__dirname, '..', 'bob');
 const DIST_DIR = path.join(BOB_DIR, 'dist');
@@ -438,11 +439,18 @@ function waitForWalletBeforeConnect() {
 // away. Here nobody may have the page open (for example after the Umbrel
 // reboots), so start it the same way the UI does. Starting is idempotent:
 // when a page connects later, Bob just refreshes its status.
+let nodeProxyStarted = false;
 async function autoStartNode() {
   try {
     const network = (await serverRpc('DB.get', ['network'])) || 'main';
     await serverRpc('Node.start', [network]);
     console.log(`[Bob web] Node started on ${network}.`);
+    // The node's HTTP API is now up; expose the read-only slice of it to a
+    // companion app (the Finestra explorer) over the Docker network.
+    if (!nodeProxyStarted) {
+      nodeProxyStarted = true;
+      startNodeProxy(serverRpc);
+    }
   } catch (e) {
     console.error('[Bob web] Could not start the node automatically:', e.message);
   }
