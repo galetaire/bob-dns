@@ -8,7 +8,7 @@ services:
       APP_PORT: 3000
 
   server:
-    image: ghcr.io/galetaire/bob-learnhns:2.3.19-web.2
+    image: ghcr.io/galetaire/bob-learnhns:2.3.19-web.3
     restart: on-failure
     # Give hsd time to flush its databases when the app stops
     stop_grace_period: 1m
@@ -17,6 +17,12 @@ services:
       # Only accept connections routed by Umbrel (see docker/web/server.js).
       # Older umbrelOS versions route through this app_proxy container.
       - BOB_WEB_PROXY_HOST=bob-wallet_app_proxy_1
+      # Read-only hsd node API for a companion explorer app (Finestra), exposed
+      # on the Docker network at bob-wallet_server_1:3100. Only the container(s)
+      # listed below may connect; the wallet API is never exposed. See
+      # docker/web/node-proxy.js. Set NODE_PROXY_ENABLED=false to turn it off.
+      - NODE_PROXY_ENABLED=true
+      - NODE_PROXY_ALLOWED_HOSTS=finestra-explorer_server_1
     volumes:
       # Same folder as the earlier KasmVNC version, so wallets and chain data carry over.
       # Bob keeps everything in /data/.config/Bob LearnHNS
