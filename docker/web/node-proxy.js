@@ -19,14 +19,6 @@
 const http = require('http');
 const dns = require('dns');
 
-// hsd node RPC port per network (see hsd/lib/protocol/networks.js).
-const RPC_PORT_BY_NETWORK = {
-  main: 12037,
-  testnet: 13037,
-  regtest: 14037,
-  simnet: 15037,
-};
-
 // Read-only JSON-RPC methods on hsd's node server. Deliberately excludes
 // anything that broadcasts (sendrawtransaction), mines, mutates the mempool or
 // peers (addnode/setban/generate), or touches the wallet.
@@ -34,18 +26,19 @@ const ALLOWED_RPC = new Set([
   // chain / node info
   'getinfo', 'getblockchaininfo', 'getnetworkinfo', 'getmininginfo',
   'getblockcount', 'getbestblockhash', 'getdifficulty', 'getconnectioncount',
-  'getnetworkhashps', 'uptime',
+  'getnetworkhashps',
   // blocks
   'getblock', 'getblockbyheight', 'getblockheader', 'getblockhash',
-  'getchaintips', 'getentropy',
+  'getchaintips',
   // transactions (read)
   'getrawtransaction', 'gettxout', 'gettxoutproof', 'verifytxoutproof',
   'decoderawtransaction', 'decodescript',
   // mempool (read)
   'getmempoolinfo', 'getrawmempool', 'getmempoolentry', 'estimatefee',
   'estimatesmartfee', 'estimatepriority',
-  // names / auctions (the Handshake-specific data)
-  'getnameinfo', 'getnameresource', 'getnamebyhash', 'getnames',
+  // names / auctions (the Handshake-specific data). getnames is left out on
+  // purpose: it walks the whole name tree and would load the wallet's node.
+  'getnameinfo', 'getnameresource', 'getnamebyhash',
   'getnameproof', 'getdnssecproof',
   // addresses
   'validateaddress',
@@ -65,6 +58,10 @@ const ALLOWED_REST = [
   /^mempool$/,                       // /mempool
   /^fee$/,                           // /fee
 ];
+
+// hsd has no limit on address lookups, and a very active address can return a
+// huge response. Stop reading rather than buffer it all in the wallet's process.
+const MAX_RESPONSE_BYTES = 32 * 1024 * 1024;
 
 const PORT = Number(process.env.NODE_PROXY_PORT || 3100);
 const ENABLED = process.env.NODE_PROXY_ENABLED !== 'false';
@@ -128,8 +125,18 @@ function hsdRequest({rpcPort, apiKey, method, path, body}) {
       },
     }, res => {
       const chunks = [];
-      res.on('data', c => chunks.push(c));
+      let size = 0;
+      res.on('data', c => {
+        size += c.length;
+        if (size > MAX_RESPONSE_BYTES) {
+          reject(new Error('Response too large'));
+          res.destroy();
+          return;
+        }
+        chunks.push(c);
+      });
       res.on('end', () => resolve({status: res.statusCode, body: Buffer.concat(chunks)}));
+      res.on('error', reject);
     });
     req.on('error', reject);
     req.setTimeout(30000, () => req.destroy(new Error('hsd request timed out')));
@@ -168,8 +175,8 @@ function readBody(req, limit = 256 * 1024) {
   });
 }
 
-// `getContext` returns {rpcPort, apiKey} for the running node, or throws.
-function createProxyServer(getContext) {
+// `getNode` returns {rpcPort, apiKey} for the running node, or throws.
+function createProxyServer(getNode) {
   return http.createServer(async (req, res) => {
     try {
       if (!(await isAllowed(req.socket.remoteAddress))) return sendJson(res, 403, {error: 'Forbidden'});
@@ -179,13 +186,13 @@ function createProxyServer(getContext) {
 
       if (req.method === 'GET' && pathname === '/health') {
         let ok = false;
-        try { await getContext(); ok = true; } catch (e) {}
+        try { getNode(); ok = true; } catch (e) {}
         return sendJson(res, 200, {status: ok ? 'ready' : 'starting'});
       }
 
       let ctx;
       try {
-        ctx = await getContext();
+        ctx = getNode();
       } catch (e) {
         return sendJson(res, 503, {error: 'Node not ready'});
       }
@@ -232,27 +239,18 @@ function createProxyServer(getContext) {
   });
 }
 
-// `serverRpc(method, params)` is server.js's bridge into Bob's main process,
-// used here to read the node's network and api key from Bob's own DB.
-function startNodeProxy(serverRpc) {
+// `getNode` comes from server.js and asks Bob's node service, so the port and
+// key always match the node that is running. Bob's LearnHNS builds move hsd's
+// ports by 1000, so the standard port numbers cannot be assumed here. Called on
+// every request because the node can restart or change network.
+function startNodeProxy(getNode) {
   if (!ENABLED) {
     console.log('[Bob node-proxy] Disabled (NODE_PROXY_ENABLED=false).');
     return;
   }
 
-  let cached = null;
-  async function getContext() {
-    if (cached) return cached;
-    const network = (await serverRpc('DB.get', ['network'])) || 'main';
-    const apiKey = await serverRpc('DB.get', ['nodeApiKey']);
-    const rpcPort = RPC_PORT_BY_NETWORK[network];
-    if (!apiKey || !rpcPort) throw new Error('Node api key / port not available yet');
-    cached = {rpcPort, apiKey};
-    return cached;
-  }
-
   refreshAllowedIps();
-  const server = createProxyServer(getContext);
+  const server = createProxyServer(getNode);
   server.on('error', e => console.error('[Bob node-proxy] Server error:', e.message));
   server.listen(PORT, '0.0.0.0', () => {
     console.log(`[Bob node-proxy] Read-only node API on 0.0.0.0:${PORT}. ` +
