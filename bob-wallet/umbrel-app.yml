@@ -41,10 +41,10 @@ gallery:
   - https://raw.githubusercontent.com/galetaire/bob-umbrel/main/bob-wallet/gallery/2.png
   - https://raw.githubusercontent.com/galetaire/bob-umbrel/main/bob-wallet/gallery/3.png
 releaseNotes: >-
-  Tightens the read-only connection for the Finestra explorer app: heavy
-  and unused node calls are no longer allowed, and oversized responses are
-  stopped so they cannot slow down your wallet. Your wallet stays private
-  and behind the Umbrel login.
+  Fixes the read-only connection for the Finestra explorer app, which could
+  not reach your node. Heavy and unused node calls are no longer allowed, and
+  oversized responses are stopped so they cannot slow down your wallet. Your
+  wallet stays private and behind the Umbrel login.
 dependencies: []
 path: ""
 defaultUsername: ""

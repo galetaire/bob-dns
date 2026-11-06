@@ -384,7 +384,17 @@ function markReady() {
   appReady = true;
   console.log('[Bob web] Services started, UI is ready.');
   while (readyWaiters.length) readyWaiters.shift()();
+  // Started before the node so a companion app gets a clear "not ready" answer
+  // while the node opens, restarts, or is replaced by a custom RPC connection.
+  startNodeProxy(localNode);
   autoStartNode();
+}
+
+// The running local node's HTTP API, for the read-only proxy.
+function localNode() {
+  const {service} = require(path.join(DIST_DIR, 'background', 'node', 'service.js'));
+  if (!service.hsd || !service.apiKey) throw new Error('Local node is not running');
+  return {rpcPort: service.getRpcPort(), apiKey: service.apiKey};
 }
 
 // Bob's NodeService.startNode() assumes it is never called twice at once: a
@@ -439,18 +449,11 @@ function waitForWalletBeforeConnect() {
 // away. Here nobody may have the page open (for example after the Umbrel
 // reboots), so start it the same way the UI does. Starting is idempotent:
 // when a page connects later, Bob just refreshes its status.
-let nodeProxyStarted = false;
 async function autoStartNode() {
   try {
     const network = (await serverRpc('DB.get', ['network'])) || 'main';
     await serverRpc('Node.start', [network]);
     console.log(`[Bob web] Node started on ${network}.`);
-    // The node's HTTP API is now up; expose the read-only slice of it to a
-    // companion app (the Finestra explorer) over the Docker network.
-    if (!nodeProxyStarted) {
-      nodeProxyStarted = true;
-      startNodeProxy(serverRpc);
-    }
   } catch (e) {
     console.error('[Bob web] Could not start the node automatically:', e.message);
   }
