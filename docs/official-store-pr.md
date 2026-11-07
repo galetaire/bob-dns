@@ -18,7 +18,7 @@ Version: 2.3.19
 
 Adds Bob DNS, which runs [Bob LearnHNS](https://github.com/shadstoneofficial/bob-wallet) (GPL-3.0, a maintained fork of [Bob Wallet](https://github.com/kyokan/bob-wallet)) on Umbrel: a Handshake (HNS) wallet with a built-in Handshake full node (hsd). Users can hold HNS, bid on name auctions, and manage their Handshake domains and DNS records from the browser.
 
-Bob is an Electron desktop app, and upstream publishes no Docker image and no ARM Linux build. The package uses a wrapper image, `ghcr.io/galetaire/bob-learnhns:2.3.19-web.2` (amd64 and arm64, public), built by GitHub Actions on native runners from [galetaire/bob-umbrel](https://github.com/galetaire/bob-umbrel). It builds Bob from its release tag and runs it as a web app without Electron:
+Bob is an Electron desktop app, and upstream publishes no Docker image and no ARM Linux build. The package uses a wrapper image, `ghcr.io/galetaire/bob-learnhns:2.3.19-web.2` (amd64 and arm64, public), built by GitHub Actions on native runners from [galetaire/bob-dns](https://github.com/galetaire/bob-dns). It builds Bob from its release tag and runs it as a web app without Electron:
 
 - Bob's main process (wallet, hsd node, services) runs under plain Node with a small stand-in for the `electron` module. Bob's own React UI, already a web bundle, is served to the browser and reaches the main process over a WebSocket that carries the same IPC messages Electron would.
 - File exports become browser downloads, and imports use the browser's file picker.
@@ -66,10 +66,10 @@ Known lint warnings or caveats: `npm run lint:apps -- bob-wallet --check-images`
 
 Logo:
 
-![Bob DNS logo](https://raw.githubusercontent.com/galetaire/bob-umbrel/main/bob-wallet/icon.png)
+![Bob DNS logo](https://raw.githubusercontent.com/galetaire/bob-dns/main/bob-wallet/icon.png)
 
 Screenshots:
 
-![Screenshot 1](https://raw.githubusercontent.com/galetaire/bob-umbrel/main/bob-wallet/gallery/1.png)
-![Screenshot 2](https://raw.githubusercontent.com/galetaire/bob-umbrel/main/bob-wallet/gallery/2.png)
-![Screenshot 3](https://raw.githubusercontent.com/galetaire/bob-umbrel/main/bob-wallet/gallery/3.png)
+![Screenshot 1](https://raw.githubusercontent.com/galetaire/bob-dns/main/bob-wallet/gallery/1.png)
+![Screenshot 2](https://raw.githubusercontent.com/galetaire/bob-dns/main/bob-wallet/gallery/2.png)
+![Screenshot 3](https://raw.githubusercontent.com/galetaire/bob-dns/main/bob-wallet/gallery/3.png)

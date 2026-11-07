@@ -37,7 +37,7 @@ RUN echo "// Sentry is disabled in the web build" > app/renderer/sentry.js \
 # Bob's build records its source commit and refuses a modified worktree.
 # Commit the web-build changes locally so the recorded commit is honest.
 RUN git add -A app configs \
-  && git -c user.name="bob-umbrel build" -c user.email="build@bob-umbrel.invalid" \
+  && git -c user.name="bob-dns build" -c user.email="build@bob-dns.invalid" \
     commit -q -m "Umbrel web build: disable the renderer's Sentry SDK" \
   && test -z "$(git status --porcelain --untracked-files=normal)"
 
@@ -57,7 +57,7 @@ ARG BOB_VERSION
 LABEL org.opencontainers.image.title="Bob LearnHNS" \
       org.opencontainers.image.description="Bob LearnHNS Handshake wallet as a web app for umbrelOS" \
       org.opencontainers.image.version="${BOB_VERSION}" \
-      org.opencontainers.image.source="https://github.com/galetaire/bob-umbrel"
+      org.opencontainers.image.source="https://github.com/galetaire/bob-dns"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libudev1 \
@@ -78,7 +78,7 @@ RUN printf '%s\n' \
     "" \
     "Umbrel packaging (web server in /opt/bob-web, Dockerfile, and the changes" \
     "applied to Bob at build time):" \
-    "  https://github.com/galetaire/bob-umbrel" \
+    "  https://github.com/galetaire/bob-dns" \
     > /opt/bob/NOTICE
 COPY --from=build /src/dist /opt/bob/dist
 COPY --from=build /src/node_modules /opt/bob/node_modules

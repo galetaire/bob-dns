@@ -2,7 +2,7 @@ manifestVersion: 1
 id: bob-wallet
 name: Bob DNS
 tagline: Handshake DNS wallet and full node
-icon: https://raw.githubusercontent.com/galetaire/bob-umbrel/main/bob-wallet/icon.png
+icon: https://raw.githubusercontent.com/galetaire/bob-dns/main/bob-wallet/icon.png
 category: crypto
 version: "2.3.19-web.4"
 port: 8337
@@ -33,13 +33,13 @@ description: >-
 developer: Shadstone
 website: https://bobwallet.org
 submitter: galetaire
-submission: https://github.com/galetaire/bob-umbrel
+submission: https://github.com/galetaire/bob-dns
 repo: https://github.com/shadstoneofficial/bob-wallet
 support: https://github.com/shadstoneofficial/bob-wallet/issues
 gallery:
-  - https://raw.githubusercontent.com/galetaire/bob-umbrel/main/bob-wallet/gallery/1.png
-  - https://raw.githubusercontent.com/galetaire/bob-umbrel/main/bob-wallet/gallery/2.png
-  - https://raw.githubusercontent.com/galetaire/bob-umbrel/main/bob-wallet/gallery/3.png
+  - https://raw.githubusercontent.com/galetaire/bob-dns/main/bob-wallet/gallery/1.png
+  - https://raw.githubusercontent.com/galetaire/bob-dns/main/bob-wallet/gallery/2.png
+  - https://raw.githubusercontent.com/galetaire/bob-dns/main/bob-wallet/gallery/3.png
 releaseNotes: >-
   Fixes the read-only connection for the Finestra explorer app, which could
   not reach your node. Heavy and unused node calls are no longer allowed, and
