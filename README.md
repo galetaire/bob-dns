@@ -1,4 +1,4 @@
-# Bob Wallet Umbrel Community App Store
+# Bob Wallet 🐈‍⬛ Umbrel App
 
 An [umbrelOS community app store](https://github.com/getumbrel/umbrel-community-app-store):
 
